@@ -14,6 +14,7 @@
 
 import os
 import pathlib
+from functools import cmp_to_key
 
 from .extensions import load_type_extensions
 from .extensions import load_typesupport_extensions
@@ -76,6 +77,9 @@ def generate(
 
     if unspecific_generation and not extensions:
         raise RuntimeError('No type nor typesupport extensions were found')
+
+    # ensure that the type_description generator comes first
+    extensions = sorted(extensions, key=cmp_to_key(lambda item1, item2: -1 if item1.name == 'type_description' else 1 if item2.name == 'type_description' else 0))
 
     if include_paths is None:
         include_paths = []

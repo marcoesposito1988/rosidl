@@ -29,6 +29,16 @@ def package_name_from_interface_file_path(path):
     return pathlib.Path(os.path.abspath(path)).parents[1].name
 
 
+def include_paths_with_name(include_paths):
+    """
+    Prepends the package name to each entry
+    """
+    return list({
+        f'{include_path.name}:{include_path}'
+        for include_path in include_paths
+    })
+
+
 def dependencies_from_include_paths(include_paths):
     """
     Collect dependencies' ROS interface definition files from include paths.
@@ -42,6 +52,23 @@ def dependencies_from_include_paths(include_paths):
         for path in pathlib.Path(
             os.path.abspath(include_path)
         ).glob('**/*.idl')
+    })
+
+
+def type_description_tuple_from_interface_file(interface_file, output_path):
+    prefix, path = interface_path_as_tuple(interface_file)
+    filedir = pathlib.Path(path).parent.name
+    return f'{path}:{output_path}/{filedir}/{pathlib.Path(path).stem}.json'
+
+
+def type_description_tuples_from_interface_files(interface_files, output_path):
+    """
+    Compute path of type description files from the list of interface files.
+    """
+    type_description_outputpath=pathlib.Path(output_path).parent / 'type_description'
+    return list({
+        type_description_tuple_from_interface_file(interface_file, type_description_outputpath)
+        for interface_file in interface_files
     })
 
 
@@ -89,12 +116,12 @@ def idl_tuples_from_interface_files(interface_files):
 
 @contextlib.contextmanager
 def legacy_generator_arguments_file(
-    *,
-    package_name,
-    interface_files,
-    include_paths,
-    templates_path,
-    output_path
+        *,
+        package_name,
+        interface_files,
+        include_paths,
+        templates_path,
+        output_path
 ):
     """
     Generate a temporary rosidl generator arguments file.
@@ -111,8 +138,10 @@ def legacy_generator_arguments_file(
     :param output_path: Path to the output directory for generated code
     """
     idl_tuples = idl_tuples_from_interface_files(interface_files)
+    include_paths_with_names = include_paths_with_name(include_paths)
     interface_dependencies = dependencies_from_include_paths(include_paths)
     output_path = os.path.abspath(output_path)
+    type_description_tuples = type_description_tuples_from_interface_files(interface_files, output_path)
     templates_path = os.path.abspath(templates_path)
     # NOTE(hidmic): named temporary files cannot be opened twice on Windows,
     # so close it and manually remove it when leaving the context
@@ -121,7 +150,9 @@ def legacy_generator_arguments_file(
             'package_name': package_name,
             'output_dir': output_path,
             'template_dir': templates_path,
+            'include_paths': include_paths_with_names,
             'idl_tuples': idl_tuples,
+            'type_description_tuples': type_description_tuples,
             'ros_interface_dependencies': interface_dependencies,
             # TODO(hidmic): re-enable output file caching
             'target_dependencies': []
@@ -137,10 +168,10 @@ def legacy_generator_arguments_file(
 
 
 def generate_visibility_control_file(
-    *,
-    package_name,
-    template_path,
-    output_path
+        *,
+        package_name,
+        template_path,
+        output_path
 ):
     """
     Generate a visibility control file from a template.
