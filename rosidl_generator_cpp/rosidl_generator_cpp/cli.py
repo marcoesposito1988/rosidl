@@ -17,6 +17,7 @@ import pathlib
 from ament_index_python import get_package_share_directory
 from rosidl_cli.command.generate.extensions import GenerateCommandExtension
 from rosidl_cli.command.helpers import legacy_generator_arguments_file
+from rosidl_cli.command.helpers import generate_visibility_control_file
 from rosidl_cli.command.translate.api import translate
 
 from rosidl_generator_cpp import generate_cpp
@@ -31,6 +32,8 @@ class GenerateCpp(GenerateCommandExtension):
         include_paths,
         output_path
     ):
+        generated_files = []
+
         package_share_path = \
             pathlib.Path(get_package_share_directory('rosidl_generator_cpp'))
         templates_path = package_share_path / 'resource'
@@ -52,6 +55,19 @@ class GenerateCpp(GenerateCommandExtension):
                 output_path=output_path / 'tmp',
             ))
 
+        # Generate visibility control file
+        visibility_control_file_template_path = \
+            templates_path / 'rosidl_generator_cpp__visibility_control.hpp.in'
+        visibility_control_file_path = \
+            output_path / 'msg' / 'rosidl_generator_cpp__visibility_control.hpp'
+
+        generate_visibility_control_file(
+            package_name=package_name,
+            template_path=visibility_control_file_template_path,
+            output_path=visibility_control_file_path
+        )
+        generated_files.append(visibility_control_file_path)
+
         # Generate code
         with legacy_generator_arguments_file(
             package_name=package_name,
@@ -60,4 +76,6 @@ class GenerateCpp(GenerateCommandExtension):
             templates_path=templates_path,
             output_path=output_path
         ) as path_to_arguments_file:
-            return generate_cpp(path_to_arguments_file)
+            generated_files.extend(generate_cpp(path_to_arguments_file))
+
+        return generated_files
