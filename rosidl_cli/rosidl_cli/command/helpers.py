@@ -58,7 +58,7 @@ def dependencies_from_include_paths(include_paths):
 def type_description_tuple_from_interface_file(interface_file, output_path):
     prefix, path = interface_path_as_tuple(interface_file)
     filedir = pathlib.Path(path).parent.name
-    return f'{path}:{output_path}/{filedir}/{pathlib.Path(path).stem}.json'
+    return f'{path.as_posix()}:{output_path}/{filedir}/{pathlib.Path(path).stem}.json'
 
 
 def type_description_tuples_from_interface_files(interface_files, output_path):
